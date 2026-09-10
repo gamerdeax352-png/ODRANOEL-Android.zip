@@ -26,19 +26,28 @@ jobs:
 
           if [ -z "$ZIP" ]; then
             echo "ERRO: ODRANOEL-Android.zip nao foi encontrado."
+            echo "ZIPs disponiveis:"
+            find . -type f -iname "*.zip" -print
             exit 1
           fi
 
           echo "ZIP encontrado: $ZIP"
 
           mkdir -p projeto
+
+          echo "Testando ZIP..."
           unzip -t "$ZIP"
+
+          echo "Extraindo ZIP..."
           unzip -o "$ZIP" -d projeto
+
+          echo "Projeto extraido:"
+          find projeto -maxdepth 5 -type f -print
 
       - name: Encontrar projeto Android
         id: android
         run: |
-          ROOT=$(find projeto -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -print -quit | xargs -r dirname)
+          ROOT=$(find projeto -type f -name "settings.gradle" -o -name "settings.gradle.kts" -print -quit | xargs -r dirname)
 
           if [ -z "$ROOT" ]; then
             echo "ERRO: projeto Android nao encontrado."
@@ -61,25 +70,8 @@ jobs:
 
       - name: Gerar APK
         working-directory: ${{ steps.android.outputs.root }}
-        run: gradle assembleDebug --stacktrace
-
-      - name: Procurar APK
-        run: find projeto -type f -name "*.apk" -print
-
-      - name: Disponibilizar APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ODRANOEL-APK
-          path: projeto/**/*.apk
-          if-no-files-found: error
-      - name: Configurar Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
-      - name: Gerar APK
-        working-directory: ${{ steps.android.outputs.root }}
-        run: gradle assembleDebug
+        run: |
+          gradle assembleDebug --stacktrace
 
       - name: Procurar APK
         run: |
@@ -89,6 +81,5 @@ jobs:
       - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
-          name: ODRANOEL-APK
-          path: projeto/**/*.apk
-          if-no-files-found: error
+          name: ODRANOEL-APK-${{ github.run_number }}
+          path: projeto/**/*.

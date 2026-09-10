@@ -11,10 +11,29 @@ jobs:
       - name: Baixar projeto
         uses: actions/checkout@v4
 
+      - name: Verificar arquivos
+        run: |
+          echo "Arquivos do repositorio:"
+          ls -lah
+          echo "ZIPs encontrados:"
+          find . -maxdepth 2 -type f -iname "*.zip" -print
+
       - name: Extrair projeto
         run: |
-          mkdir projeto
-          unzip -o ODRANOEL-Android-corrigido.zip -d projeto
+          set -e
+
+          ZIP=$(find . -maxdepth 2 -type f -iname "ODRANOEL-Android.zip" -print -quit)
+
+          if [ -z "$ZIP" ]; then
+            echo "ERRO: ODRANOEL-Android.zip nao foi encontrado."
+            exit 1
+          fi
+
+          echo "ZIP encontrado: $ZIP"
+
+          mkdir -p projeto
+          unzip -t "$ZIP"
+          unzip -o "$ZIP" -d projeto
 
       - name: Encontrar projeto Android
         id: android
@@ -22,12 +41,12 @@ jobs:
           ROOT=$(find projeto -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -print -quit | xargs -r dirname)
 
           if [ -z "$ROOT" ]; then
-            echo "Projeto Android não encontrado"
+            echo "ERRO: projeto Android nao encontrado."
             exit 1
           fi
 
-          echo "root=$ROOT" >> "$GITHUB_OUTPUT"
           echo "Projeto encontrado em: $ROOT"
+          echo "root=$ROOT" >> "$GITHUB_OUTPUT"
 
       - name: Configurar Java
         uses: actions/setup-java@v4
@@ -35,6 +54,24 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Gerar APK
+        working-directory: ${{ steps.android.outputs.root }}
+        run: gradle assembleDebug --stacktrace
+
+      - name: Procurar APK
+        run: find projeto -type f -name "*.apk" -print
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ODRANOEL-APK
+          path: projeto/**/*.apk
+          if-no-files-found: error
       - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:

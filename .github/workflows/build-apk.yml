@@ -11,30 +11,44 @@ jobs:
       - name: Baixar projeto
         uses: actions/checkout@v4
 
-      - name: Verificar arquivos
-        run: |
-          echo "Arquivos do repositorio:"
-          ls -lah
-          echo "ZIPs encontrados:"
-          find . -maxdepth 2 -type f -iname "*.zip" -print
-
       - name: Extrair projeto
         run: |
-          set -e
+          mkdir -p projeto
+          unzip -o ODRANOEL-Android.zip -d projeto
 
-          ZIP=$(find . -maxdepth 2 -type f -iname "ODRANOEL-Android.zip" -print -quit)
+      - name: Localizar projeto
+        run: |
+          echo "Procurando settings.gradle.kts..."
+          find projeto -type f -name "settings.gradle.kts" -print
 
-          if [ -z "$ZIP" ]; then
-            echo "ERRO: ODRANOEL-Android.zip nao foi encontrado."
-            echo "ZIPs disponiveis:"
-            find . -type f -iname "*.zip" -print
-            exit 1
+          echo "Procurando settings.gradle..."
+          find projeto -type f -name "settings.gradle" -print
+
+      - name: Gerar APK
+        run: |
+          if [ -f "projeto/settings.gradle.kts" ]; then
+            cd projeto
+          else
+            DIR=$(dirname "$(find projeto -type f -name "settings.gradle.kts" -print -quit)")
+            cd "$DIR"
           fi
 
-          echo "ZIP encontrado: $ZIP"
+          echo "Projeto encontrado em:"
+          pwd
 
-          mkdir -p projeto
+          gradle assembleDebug --stacktrace
 
+      - name: Procurar APK
+        run: |
+          echo "APKs encontrados:"
+          find projeto -type f -name "*.apk" -print
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ODRANOEL-APK-${{ github.run_number }}
+          path: projeto/**/*.apk
+          if-no-files-found: error
           echo "Testando ZIP..."
           unzip -t "$ZIP"
 

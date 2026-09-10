@@ -1,0 +1,57 @@
+name: Gerar APK ODRANOEL
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Extrair projeto
+        run: |
+          mkdir projeto
+          unzip -o ODRANOEL-Android-corrigido.zip -d projeto
+
+      - name: Encontrar projeto Android
+        id: android
+        run: |
+          ROOT=$(find projeto -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -print -quit | xargs -r dirname)
+
+          if [ -z "$ROOT" ]; then
+            echo "Projeto Android não encontrado"
+            exit 1
+          fi
+
+          echo "root=$ROOT" >> "$GITHUB_OUTPUT"
+          echo "Projeto encontrado em: $ROOT"
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Gerar APK
+        working-directory: ${{ steps.android.outputs.root }}
+        run: gradle assembleDebug
+
+      - name: Procurar APK
+        run: |
+          echo "APKs encontrados:"
+          find projeto -type f -name "*.apk" -print
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ODRANOEL-APK
+          path: projeto/**/*.apk
+          if-no-files-found: error
